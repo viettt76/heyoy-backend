@@ -1,0 +1,483 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Gender {
+    MALE
+    FEMALE
+    OTHER
+}
+
+enum UserRole {
+    USER
+    ADMIN
+}
+
+enum ConversationRole {
+    MEMBER
+    ADMIN
+}
+
+enum CommunityRole {
+    ADMIN
+    MEMBER
+}
+
+enum RelationshipType {
+    FRIEND
+    LOVE
+    SIBLING
+    BEST_FRIEND
+}
+
+enum PostVisibility {
+    FRIEND
+    PUBLIC
+    PRIVATE
+}
+
+enum PostStatus {
+    PENDING
+    APPROVED
+    INVALID
+}
+
+enum PostReactionType {
+    LIKE
+    LOVE
+    LOVE_LOVE
+    HAHA
+    WOW
+    SAD
+    ANGRY
+}
+
+enum CommentReactionType {
+    LIKE
+    LOVE
+    LOVE_LOVE
+    HAHA
+    WOW
+    SAD
+    ANGRY
+}
+
+enum ConversationType {
+    PRIVATE
+    GROUP
+}
+
+enum MovieType {
+    MOVIE
+    TV
+}
+
+enum MovieSource {
+    OPHIM
+    KKPHIM
+}
+
+enum MessageType {
+    TEXT
+    IMAGE
+    LINK
+    FILE
+    VIDEO
+    NOTIFICATION
+}
+
+enum MessageReactionType {
+    LIKE
+    LOVE
+    LOVE_LOVE
+    HAHA
+    WOW
+    SAD
+    ANGRY
+}
+
+enum NotificationType {
+    LIKE_POST
+    LIKE_COMMENT
+    COMMENT
+    FRIEND_REQUEST
+}
+
+model User {
+    id                          String           @id() @default(cuid()) @db.VarChar(50)
+    username                    String           @map("username") @db.VarChar(255)
+    password                    String           @map("password") @db.VarChar(255)
+    firstName                   String           @map("first_name") @db.VarChar(255)
+    lastName                    String           @map("last_name") @db.VarChar(255)
+    gender                      Gender           @map("gender")
+    role                        UserRole         @map("role")
+    isPrivate                   Boolean          @map("is_private") @default(false)
+    isActive                    Boolean          @map("is_active") @default(true) 
+
+    birthday                    DateTime?        @map("birthday") @db.Timestamptz(0)
+    hometown                    String?          @map("hometown") @db.VarChar(255)
+    school                      String?          @map("school") @db.VarChar(255)
+    workplace                   String?          @map("workplace") @db.VarChar(255)
+    avatar                      String?          @map("avatar") @db.VarChar(255)  
+    refreshToken                String?          @map("refresh_token")  
+
+    createdAt                   DateTime         @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt                   DateTime?        @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt                   DateTime?        @map("deleted_at") @db.Timestamptz(0)
+
+    comments                    Comment[]
+    conversationParticipant     ConversationParticipant[]
+    commentReactions            CommentReaction[]
+    messageReactions            MessageReaction[]
+    postReactions               PostReaction[]
+    friendRequestAsSender       FriendRequest[]         @relation("FriendRequestSender")
+    friendRequestAsReceiver     FriendRequest[]         @relation("FriendRequestReceiver")
+    message                     Message[]
+    notifications               Notification[]
+    posts                       Post[]
+    relationshipAsUser1         Relationship[]          @relation("RelationshipAsUser1")
+    relationshipAsUser2         Relationship[]          @relation("RelationshipAsUser2")
+    bookmarks                   BookmarkPost[]
+    favoriteMovies              FavoriteMovie[]
+    messageReads                MessageRead[]
+    communityMembers            CommunityMember[]
+    sharedPosts                 SharedPost[]
+
+    @@map("users")
+}
+
+model Relationship {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    user1Id             String              @map("user1_id") @db.VarChar(50)
+    user2Id             String              @map("user2_id") @db.VarChar(50)
+    relationshipType    RelationshipType    @map("relationship_type") @default(FRIEND)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user1               User                @relation("RelationshipAsUser1", fields: [user1Id], references: [id], onDelete: Cascade)
+    user2               User                @relation("RelationshipAsUser2", fields: [user2Id], references: [id], onDelete: Cascade)
+
+    @@index([user1Id])
+    @@index([user2Id])
+    @@unique([user1Id, user2Id])
+    @@map("relationships")
+}
+
+model FriendRequest {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    senderId            String              @map("sender_id") @db.VarChar(50)
+    receiverId          String              @map("receiver_id") @db.VarChar(50)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    sender              User                @relation("FriendRequestSender", fields: [senderId], references: [id], onDelete: Cascade)
+    receiver            User                @relation("FriendRequestReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+    @@unique([senderId, receiverId])
+    @@map("friend_requests")
+}
+
+model Post {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    authorId            String              @map("author_id") @db.VarChar(50)
+    visibilityType      PostVisibility      @map("visibility_type")
+    status              PostStatus          @map("status")
+    reason              String              @map("reason")
+
+    content             String?             @map("content")
+    reviewedBy          String?             @map("reviewed_by") @db.VarChar(50)
+    reviewedAt          String?             @map("reviewed_At") @db.VarChar(50)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    poster              User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+    comments            Comment[]
+    reactions           PostReaction[]
+    images              ImageOfPost[]
+    bookmarks           BookmarkPost[]
+    shares              SharedPost[]
+
+    @@map("posts")
+}
+
+model PostReaction {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    postId              String              @map("post_id") @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    reactionType        PostReactionType    @map("reaction_type")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    post                Post                @relation(fields: [postId], references: [id], onDelete: Cascade)     
+
+    @@unique([postId, userId])
+    @@map("post_reactions")
+}
+
+model BookmarkPost {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    postId              String              @map("post_id") @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    post                Post                @relation(fields: [postId], references: [id], onDelete: Cascade)
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([postId, userId])
+    @@map("bookmark_posts")
+}
+
+model SharedPost {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    postId              String              @map("post_id") @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    post                Post                @relation(fields: [postId], references: [id], onDelete: Cascade)
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([postId, userId])
+    @@map("shared_posts")
+}
+
+model Comment {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    postId              String              @map("post_id") @db.VarChar(50)
+    authorId            String              @map("author_id") @db.VarChar(50)
+
+    parentCommentId     String?             @map("parent_comment_id") @db.VarChar(50)
+    content             String?             @map("content")
+    image               String?             @map("image")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    commentator         User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+    parentComment       Comment?            @relation("CommentToReplies", fields: [parentCommentId], references: [id], onDelete: Cascade)
+    replies             Comment[]           @relation("CommentToReplies")
+    post                Post                @relation(fields: [postId], references: [id], onDelete: Cascade)
+    reactions           CommentReaction[]
+
+    @@index([postId, createdAt])
+    @@map("comments")
+}
+
+model CommentReaction {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    commentId           String              @map("comment_id") @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    reactionType        CommentReactionType @map("reaction_type")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    comment             Comment             @relation(fields: [commentId], references: [id], onDelete: Cascade)     
+
+    @@unique([commentId, userId])
+    @@map("comment_reactions")
+}
+
+model Conversation {
+    id                              String                      @id() @default(cuid()) @db.VarChar(50)
+    type                            ConversationType            @map("type")
+    name                            String                      @map("name") @db.VarChar(100)
+    lastMessageId                   String                      @map("last_message_id") @db.VarChar(50)
+  
+    avatar                          String?                     @map("avatar")
+
+    createdAt                       DateTime                    @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt                       DateTime?                   @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt                       DateTime?                   @map("deleted_at") @db.Timestamptz(0)
+
+    conversationParticipants        ConversationParticipant[]   
+    messages                        Message[]                   @relation("MessagesInConversation")
+    lastMessage                     Message                     @relation("LastMessageOfConversation", fields: [lastMessageId], references: [id], onDelete: Cascade) 
+
+    @@index([lastMessageId])
+    @@unique([lastMessageId])
+    @@map("conversations")
+}
+
+model ConversationParticipant {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    conversationId      String              @map("conversation_id") @db.VarChar(50)
+    role                ConversationRole    @map("role") @default(MEMBER)
+
+    nickname            String?             @map("name") @db.VarChar(100)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    conversation        Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade) 
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)       
+
+    @@index([conversationId])
+    @@map("conversation_participants")
+}
+
+model FavoriteMovie {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    movieId             String              @map("movie_id") @db.VarChar(50)
+    name                String              @map("name") @db.VarChar(255)
+    slug                String              @map("slug") @db.VarChar(255)
+    thumbUrl            String              @map("thumb_url")
+    type                MovieType           @map("type")
+    source              MovieSource         @map("source")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)       
+
+    @@index([userId])
+    @@unique([userId, movieId, source])
+    @@map("favorite_movies")
+}
+
+model Community {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    name                String              @map("name") @db.VarChar(255)
+    avatar              String              @map("avatar")
+    isPublic            Boolean             @map("is_public") @default(true)
+
+    background          String?             @map("background")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    communityMembers    CommunityMember[]
+
+    @@index([id, name])
+    @@map("community")
+}
+
+model CommunityMember {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    communityId         String              @map("group_id") @db.VarChar(50)
+    memberId            String              @map("member_id") @db.VarChar(50)
+    role                CommunityRole       @map("role") @default(MEMBER)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    community           Community           @relation(fields: [communityId], references: [id], onDelete: Cascade) 
+    member              User                @relation(fields: [memberId], references: [id], onDelete: Cascade) 
+
+    @@map("community_members")
+}
+
+model ImageOfPost {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    postId              String              @map("postId") @db.VarChar(50)
+    imageUrl            String              @map("image_url")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    post                Post                @relation(fields: [postId], references: [id], onDelete: Cascade) 
+
+    @@map("image_of_posts")
+}
+
+model Message {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    senderId            String              @map("sender_id") @db.VarChar(50)
+    conversationId      String              @map("conversation_id") @db.VarChar(50)
+    content             String              @map("content")
+    fileName            String              @map("file_name")
+    messageType         MessageType         @map("message_type") @default(TEXT)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    reads               MessageRead[]        
+    reactions           MessageReaction[]  
+    sender              User                @relation(fields: [senderId], references: [id], onDelete: Cascade) 
+    conversation        Conversation        @relation("MessagesInConversation", fields: [conversationId], references: [id], onDelete: Cascade) 
+    lastInConversation  Conversation?        @relation("LastMessageOfConversation")
+
+    @@map("messages")
+}
+
+model MessageReaction {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    messageId           String              @map("message_id") @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    reactionType        MessageReactionType @map("reaction_type")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade) 
+    message             Message             @relation(fields: [messageId], references: [id], onDelete: Cascade) 
+
+    @@map("message_reactions")
+}
+
+model MessageRead {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    messageId           String              @map("message_id") @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    isRead              Boolean             @map("is_read")
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade) 
+    message             Message             @relation(fields: [messageId], references: [id], onDelete: Cascade) 
+
+    @@map("message_reads")
+}
+
+model Notification {
+    id                  String              @id() @default(cuid()) @db.VarChar(50)
+    userId              String              @map("user_id") @db.VarChar(50)
+    actorId             String              @map("actor_id") @db.VarChar(50)
+    actorEntity         String              @map("actor_entity") @db.VarChar(50)
+    referenceId         String              @map("reference_id") @db.VarChar(50)
+    referenceEntity     String              @map("reference_type") @db.VarChar(50)
+    notificationType    NotificationType    @map("type")
+    isRead              Boolean             @map("is_read") @default(false)
+    isOpenMenu          Boolean             @map("is_open_menu") @default(false)
+
+    createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(0)
+    updatedAt           DateTime?           @updatedAt() @map("updated_at") @db.Timestamptz(0)
+    deletedAt           DateTime?           @map("deleted_at") @db.Timestamptz(0)
+
+    user                User                @relation(fields: [userId], references: [id], onDelete: Cascade) 
+
+    @@map("notifications")
+}
