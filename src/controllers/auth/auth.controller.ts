@@ -1,8 +1,9 @@
 import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AuthGuard } from '@nestjs/passport';
-import { Request } from 'express';
+import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
+import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
+import { SessionGuard } from 'src/common/guards/session.guard';
 import { LoginDto, SignupDto } from 'src/dtos/auth.dto';
 import { AuthService } from 'src/services/auth/auth.service';
 import { apiHelper } from 'src/utils/api-helper';
@@ -35,13 +36,22 @@ export class AuthController {
             maxAge: Number(this.jwtRefreshExpires) || 2592000000,
         });
         return response.json({
-            accessToken: result.accessToken,
-            user: result.user,
+            data: {
+                accessToken: result.accessToken,
+                user: result.user,
+            },
         });
     }
 
+    @Post('/logout')
+    @UseGuards(AccessTokenGuard, RolesGuard, SessionGuard)
+    async logout(@Req() req: any, @Res() res: any) {
+        await this.authService.logout(req.user.id);
+        return res.clearCookie('refresh_token').json();
+    }
+
     @Post('/refresh')
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @UseGuards(RefreshTokenGuard, RolesGuard, SessionGuard)
     async refreshToken(@Req() req: any) {
         return apiHelper({
             action: () => this.authService.refreshToken(req.cookies['refresh_token']),

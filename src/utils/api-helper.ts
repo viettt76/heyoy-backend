@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Logger } from '@nestjs/common';
+import { HttpStatus } from '@nestjs/common';
 
 export const apiHelper = async ({
     action,
@@ -9,18 +9,13 @@ export const apiHelper = async ({
     message?: string;
     statusCode?: number;
 }) => {
-    try {
-        const data = await action();
+    const data = await action();
 
-        const code = statusCode ?? HttpStatus.OK;
+    const code = statusCode ?? HttpStatus.OK;
 
-        return {
-            statusCode: code,
-            message: message ?? (code >= 200 && code < 300 ? 'Success' : 'Error'),
-            data,
-        };
-    } catch (error) {
-        Logger.error(error);
-        throw new HttpException(error.message || 'Internal Server Error', HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+    return {
+        statusCode: code,
+        message: message ?? (code >= 200 && code < 300 ? 'Success' : 'Error'),
+        data,
+    };
 };

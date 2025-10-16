@@ -15,7 +15,7 @@ export class SessionGuard implements CanActivate {
             return true;
         }
 
-        const activeSession = await this.redisService.getActiveSession(user.sub);
+        const activeSession = await this.redisService.getActiveSession(user.id);
         return activeSession === user.sessionId;
     }
 }

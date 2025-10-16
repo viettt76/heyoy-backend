@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { messages } from 'src/constants/constants';
 import { LoginDto, SignupDto } from 'src/dtos/auth.dto';
 import { PrismaService } from 'src/services/database/prisma.service';
@@ -64,6 +64,11 @@ export class AuthService {
             role: user.role,
         });
 
+        await this.prismaService.user.update({
+            where: { id: user.id },
+            data: { refreshToken },
+        });
+
         return {
             accessToken,
             refreshToken,
@@ -76,6 +81,21 @@ export class AuthService {
                 role: user.role,
             },
         };
+    }
+
+    async logout(userId: string) {
+        const user = await this.prismaService.user.findFirst({
+            where: {
+                id: userId,
+            },
+        });
+
+        if (!user) throw new NotFoundException(messages.AUTHENTICATION.USERNAME_PASSWORD_INCORRECT);
+
+        await this.prismaService.user.update({
+            where: { id: userId },
+            data: { refreshToken: null },
+        });
     }
 
     async signToken(data: { id: string; role: $Enums.UserRole }) {
@@ -107,15 +127,13 @@ export class AuthService {
 
         const user = await this.prismaService.user.findUnique({
             where: {
-                id: payload.sub,
+                id: payload.id,
             },
         });
 
         if (!user || !user.refreshToken) throw new ForbiddenException(messages.AUTHENTICATION.FORBIDDEN_MESSAGE);
 
-        const refreshTokenMatches = await bcrypt.compareSync(refreshToken, user.refreshToken);
-
-        if (!refreshTokenMatches) throw new ForbiddenException(messages.AUTHENTICATION.FORBIDDEN_MESSAGE);
+        if (refreshToken !== user.refreshToken) throw new ForbiddenException(messages.AUTHENTICATION.FORBIDDEN_MESSAGE);
 
         const { accessToken } = await this.signToken({
             id: user.id,
