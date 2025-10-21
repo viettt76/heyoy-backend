@@ -1,11 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
+import { $Enums } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
 import { messages } from 'src/constants/constants';
 import { LoginDto, SignupDto } from 'src/dtos/auth.dto';
 import { PrismaService } from 'src/services/database/prisma.service';
-import * as bcrypt from 'bcrypt';
-import { ConfigService } from '@nestjs/config';
-import { JwtService } from '@nestjs/jwt';
-import { $Enums } from '@prisma/client';
 import { UserService } from 'src/services/users/user.service';
 
 @Injectable()
@@ -107,11 +107,11 @@ export class AuthService {
         }
         const accessToken = await this.jwtService.signAsync(data, {
             secret: this.jwtAccessSecret,
-            expiresIn: Number(this.jwtAccessExpires) || 3600000, // 1d
+            expiresIn: (this.jwtAccessExpires as any) || '1d', // 1d
         });
         const refreshToken = await this.jwtService.signAsync(data, {
             secret: this.jwtRefreshSecret,
-            expiresIn: Number(this.jwtRefreshExpires) || 2592000000, // 30d
+            expiresIn: (this.jwtRefreshExpires as any) || '30d', // 30d
         });
 
         return {
@@ -120,7 +120,7 @@ export class AuthService {
         };
     }
 
-    async refreshToken(refreshToken: string) {
+    async refreshToken(refreshToken: string): Promise<{ accessToken: string } | null> {
         const payload = await this.jwtService.verifyAsync(refreshToken, {
             secret: this.jwtRefreshSecret,
         });
@@ -131,9 +131,7 @@ export class AuthService {
             },
         });
 
-        if (!user || !user.refreshToken) throw new ForbiddenException(messages.AUTHENTICATION.FORBIDDEN_MESSAGE);
-
-        if (refreshToken !== user.refreshToken) throw new ForbiddenException(messages.AUTHENTICATION.FORBIDDEN_MESSAGE);
+        if (!user || refreshToken !== user.refreshToken) return null;
 
         const { accessToken } = await this.signToken({
             id: user.id,

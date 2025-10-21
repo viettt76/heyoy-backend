@@ -1,5 +1,6 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import ms from 'ms';
 import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
 import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
@@ -33,7 +34,7 @@ export class AuthController {
             httpOnly: true,
             sameSite: 'none',
             secure: true,
-            maxAge: Number(this.jwtRefreshExpires) || 2592000000,
+            maxAge: ms(this.jwtRefreshExpires ?? '30d'),
         });
         return response.json({
             data: {
@@ -44,7 +45,7 @@ export class AuthController {
     }
 
     @Post('/logout')
-    @UseGuards(AccessTokenGuard, RolesGuard, SessionGuard)
+    @UseGuards(AccessTokenGuard)
     async logout(@Req() req: any, @Res() res: any) {
         await this.authService.logout(req.user.id);
         return res.clearCookie('refresh_token').json();
@@ -52,9 +53,18 @@ export class AuthController {
 
     @Post('/refresh')
     @UseGuards(RefreshTokenGuard, RolesGuard, SessionGuard)
-    async refreshToken(@Req() req: any) {
-        return apiHelper({
-            action: () => this.authService.refreshToken(req.cookies['refresh_token']),
-        });
+    async refreshToken(@Req() req: any, @Res() res: any) {
+        try {
+            const refreshToken = req.cookies['refresh_token'];
+            if (!refreshToken) throw new UnauthorizedException('Missing refresh token');
+
+            const data = await this.authService.refreshToken(refreshToken);
+
+            return res.json({
+                accessToken: data?.accessToken,
+            });
+        } catch (error) {
+            return res.clearCookie('refreshToken').json();
+        }
     }
 }
