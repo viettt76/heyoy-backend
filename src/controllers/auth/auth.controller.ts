@@ -4,7 +4,6 @@ import ms from 'ms';
 import { AccessTokenGuard } from 'src/common/guards/access-token.guard';
 import { RefreshTokenGuard } from 'src/common/guards/refresh-token.guard';
 import { RolesGuard } from 'src/common/guards/roles.guard';
-import { SessionGuard } from 'src/common/guards/session.guard';
 import { LoginDto, SignupDto } from 'src/dtos/auth.dto';
 import { AuthService } from 'src/services/auth/auth.service';
 import { apiHelper } from 'src/utils/api-helper';
@@ -36,12 +35,7 @@ export class AuthController {
             secure: true,
             maxAge: ms(this.jwtRefreshExpires ?? '30d'),
         });
-        return response.json({
-            data: {
-                accessToken: result.accessToken,
-                user: result.user,
-            },
-        });
+        return response.json();
     }
 
     @Post('/logout')
@@ -52,7 +46,7 @@ export class AuthController {
     }
 
     @Post('/refresh')
-    @UseGuards(RefreshTokenGuard, RolesGuard, SessionGuard)
+    @UseGuards(RefreshTokenGuard, RolesGuard)
     async refreshToken(@Req() req: any, @Res() res: any) {
         try {
             const refreshToken = req.cookies['refresh_token'];
@@ -61,7 +55,9 @@ export class AuthController {
             const data = await this.authService.refreshToken(refreshToken);
 
             return res.json({
-                accessToken: data?.accessToken,
+                data: {
+                    accessToken: data?.accessToken,
+                },
             });
         } catch (error) {
             return res.clearCookie('refreshToken').json();

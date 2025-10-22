@@ -6,7 +6,7 @@ import { Strategy as JwtStrategy } from 'passport-jwt';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(JwtStrategy, 'jwt-refresh') {
-    constructor(private configService: ConfigService) {
+    constructor(configService: ConfigService) {
         super({
             jwtFromRequest: ExtractJwtFromCookie,
             secretOrKey: configService.get('authentication.jwtRefreshSecret')!,
